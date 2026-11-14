@@ -270,6 +270,28 @@
   .tr-sound.needs-click { color: var(--text); border-color: var(--text); animation: tr-pulse 1.2s steps(2) infinite; }
   @keyframes tr-pulse { 50% { background: rgba(243, 243, 243, .22); box-shadow: 0 0 0 4px rgba(243, 243, 243, .18); } }
   #trailer.is-leaving .tr-btn { opacity: 0; }
+  /* Start screen: browsers only allow sound after a click, so one click here starts the film with the song. */
+  .tr-gate {
+    position: absolute; inset: 0; z-index: 1; display: grid; place-items: end center; padding: 0 16px 19vh;
+    background: none; border: 0; margin: 0; cursor: pointer; color: var(--text); font-family: var(--font-pixel);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tr-gate[hidden] { display: none; }
+  .tr-gate:focus-visible { outline: none; }
+  .tr-gate-inner { display: grid; justify-items: center; gap: 12px; animation: gate-in .6s cubic-bezier(.2, .8, .2, 1) .25s both; }
+  .tr-gate-btn {
+    display: inline-flex; align-items: center; gap: 12px; padding: 14px 26px;
+    font-weight: 700; font-size: 1.3rem; letter-spacing: .12em; text-transform: uppercase;
+    background: rgba(19, 20, 21, .72); border: 2px solid var(--text);
+    box-shadow: inset 2px 2px 0 var(--edge-light), inset -2px -2px 0 var(--edge-shade), 0 6px 0 rgba(0, 0, 0, .35);
+    animation: gate-pulse 1.4s steps(2) infinite; transition: background-color .12s, color .12s, transform .12s;
+  }
+  .tr-gate-btn svg { display: block; width: 12px; height: 14px; }
+  .tr-gate:hover .tr-gate-btn, .tr-gate:focus-visible .tr-gate-btn { background: var(--text); color: var(--bg-0); transform: translateY(-2px); }
+  .tr-gate-hint { font-size: .85rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  @keyframes gate-pulse { 50% { box-shadow: inset 2px 2px 0 var(--edge-light), inset -2px -2px 0 var(--edge-shade), 0 6px 0 rgba(0, 0, 0, .35), 0 0 0 5px rgba(243, 243, 243, .16); } }
+  @keyframes gate-in { from { opacity: 0; transform: translateY(12px); } }
+  #trailer.is-gate .tr-sound { display: none; }
   .replay {
     font: inherit; color: inherit; background: none; border: 0; padding: 11px 0; margin-block: -11px; cursor: pointer;
     text-decoration: underline; text-underline-offset: 3px;
@@ -506,6 +528,12 @@
 
 <div id="trailer" role="dialog" aria-label="Intro trailer">
   <canvas id="trailer-canvas" aria-hidden="true"></canvas>
+  <button type="button" class="tr-gate" id="trailer-gate" hidden>
+    <span class="tr-gate-inner">
+      <span class="tr-gate-btn"><span data-icon="play" aria-hidden="true"></span>Click to start</span>
+      <span class="tr-gate-hint">Trailer with sound · 23 s</span>
+    </span>
+  </button>
   <button type="button" class="tr-btn tr-sound" id="trailer-sound" aria-pressed="false">Sound off</button>
   <button type="button" class="tr-btn tr-skip" id="trailer-skip">Skip<span data-icon="skip" aria-hidden="true"></span></button>
 </div>
@@ -1306,7 +1334,7 @@
     };
     if (skipped) { box.style.opacity = "0"; setTimeout(done, 320); } else done();
   }
-  function play() {
+  function play(gesture) {
     if (playing) return;
     window.NACH_TRAILER_ALIVE = true;
     window.scrollTo(0, 0);
@@ -1321,13 +1349,82 @@
     spLoad();
     soundLabel();
     if (!sp.userMuted) {
-      if (navigator.userActivation && navigator.userActivation.hasBeenActive) soundOn();
+      if (gesture || (navigator.userActivation && navigator.userActivation.hasBeenActive)) soundOn();
       else { sp.auto = true; sp.want = true; if (sp.state === "ready") spPlay(); }   /* try to start the song on its own */
     }
     raf = requestAnimationFrame(frame);
   }
 
-  skipBtn.addEventListener("click", function () { finish(true); });
+  /* ---- Start screen ----
+     Browsers block sound until the visitor clicks or presses a key, so when the page opens the film
+     waits on a title screen; that one click starts the trailer with the song from its first second.
+     If the browser already allows sound (the visitor clicked before, or the site is trusted), the
+     film starts straight away. Spotify loads while the title screen is up, so the song is ready. */
+  var gateEl = document.getElementById("trailer-gate"), gating = false, graf = 0;
+  function canAutoplay() {
+    if (navigator.userActivation && navigator.userActivation.hasBeenActive) return true;
+    try { if (navigator.getAutoplayPolicy) return navigator.getAutoplayPolicy("mediaelement") === "allowed"; } catch (err) { /* not supported */ }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try { var probe = new AC(), ok = probe.state === "running"; probe.close(); return ok; } catch (err) { return false; }
+  }
+  function drawGate(t) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    ctx.textBaseline = "middle"; ctx.textAlign = "center";
+    var bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#1a1b1d"); bg.addColorStop(1, "#3b3d41");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    var cell = Math.min(W * 0.84 / totalCols, H * 0.26 / 5), cy = H * 0.4;
+    glow(W / 2, cy, Math.max(W, H) * 0.6, 0.08 + 0.02 * Math.sin(t * 1.6));
+    dust(t, 30, 0.22);
+    var a = seg(t, 0, 0.6), shine = ((t * 9) % (totalCols + 40)) - 20;   /* a glint sweeps across the name now and then */
+    drawWord(W / 2, cy, cell, { t: 0, color: "rgba(243,243,243," + (0.9 * a).toFixed(3) + ")", shadow: "rgba(0,0,0," + (0.4 * a).toFixed(3) + ")", shine: shine });
+    var fs = Math.max(11, cell * 1.9);
+    font(fs, 600, PIX); ctx.fillStyle = "rgba(243,243,243," + (0.85 * a).toFixed(3) + ")";
+    spaced("STAFF PORTFOLIO", W / 2, cy + cell * 5.6, fs * 0.5, "center");
+    var v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.hypot(W, H) * 0.62);
+    v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.5)");
+    ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  }
+  function gate() {
+    if (playing || gating) return;
+    window.NACH_TRAILER_ALIVE = true;
+    window.scrollTo(0, 0);
+    root.classList.add("trailer-on"); box.classList.remove("is-leaving"); box.style.opacity = "";
+    box.classList.add("is-gate"); gateEl.hidden = false;
+    resize();
+    spLoad();
+    gating = true;
+    var g0 = 0;
+    (function loop(now) {
+      if (!gating) return;
+      if (!g0) g0 = now;
+      drawGate((now - g0) / 1000);
+      graf = requestAnimationFrame(loop);
+    })(performance.now());
+    try { gateEl.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
+  }
+  function closeGate() {
+    gating = false; cancelAnimationFrame(graf);
+    gateEl.hidden = true; box.classList.remove("is-gate");
+  }
+  function openGate() {                                /* runs inside the click, so sound is allowed */
+    if (!gating) return;
+    closeGate();
+    sp.userMuted = false;
+    play(true);
+  }
+  function skipGate() {
+    closeGate();
+    box.style.opacity = "0";
+    setTimeout(function () { root.classList.remove("trailer-on"); box.style.opacity = ""; }, 320);
+  }
+  function start() { if (canAutoplay()) play(); else gate(); }
+  if (gateEl) gateEl.addEventListener("click", openGate);
+  else gate = function () { play(); };
+
+  skipBtn.addEventListener("click", function () { if (gating) skipGate(); else finish(true); });
   soundBtn.addEventListener("click", function () {
     if (sp.want || sp.on) { sp.userMuted = true; spStop(); sp.on = false; scoreOff(); soundLabel(); return; }   /* song and effects off */
     if (au && au.scheduled) {
@@ -1348,6 +1445,12 @@
     if (wantsSound()) soundOn(); else wakeEffects();
   });
   document.addEventListener("keydown", function (e) {
+    if (gating) {
+      if (e.key === "Escape") skipGate();
+      else if (e.key === "Tab" || document.activeElement === skipBtn) return;   /* Skip handles its own Enter */
+      else { e.preventDefault(); openGate(); }
+      return;
+    }
     if (!playing) return;
     if (e.key === "Escape") finish(true);
     else if (wantsSound()) soundOn();
@@ -1356,18 +1459,19 @@
   document.addEventListener("click", function (e) {
     if (e.target && e.target.id === "trailer-replay") play();
   });
-  window.addEventListener("resize", function () { if (playing) resize(); });
+  window.addEventListener("resize", function () { if (playing || gating) resize(); });
   if (document.fonts && document.fonts.load) {
     ['700 40px "Pixelify Sans"', '600 20px "Pixelify Sans"', '600 20px "Manrope"'].forEach(function (f) { try { document.fonts.load(f); } catch (err) { /* ignore */ } });
   }
 
   window.NACH_TRAILER = {
     play: play,
-    skip: function () { finish(true); },
+    gate: gate,                                        /* shows the start screen; handy for checking */
+    skip: function () { if (gating) skipGate(); else finish(true); },
     /* Draws one still frame; handy for checking a scene. */
     still: function (t) { playing = false; cancelAnimationFrame(raf); soundOff(); root.classList.add("trailer-on"); resize(); render(t); }
   };
-  if (root.classList.contains("trailer-on")) play();
+  if (root.classList.contains("trailer-on")) start();
 })();
 </script>
 
@@ -1975,7 +2079,8 @@
     moon:   ["..###..", ".##....", "##.....", "##.....", ".##....", "..###.."],
     heart:  [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."],
     tree:   ["..###..", ".#####.", "#######", ".#####.", "...#...", "...#..."],
-    skip:   ["#..#..", "##.##.", "######", "##.##.", "#..#.."]
+    skip:   ["#..#..", "##.##.", "######", "##.##.", "#..#.."],
+    play:   ["#...", "##..", "###.", "####", "###.", "##..", "#..."]
   };
 
   function runs(rows, offsetX) {
