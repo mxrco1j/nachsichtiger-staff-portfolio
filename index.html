@@ -189,14 +189,10 @@
     position: relative; height: clamp(340px, 58vh, 520px);
     display: grid; place-items: center; perspective: 900px;
   }
-  /* a soft dark pool of shade behind the skin, so it stands clear of the moon and the busy picture,
-     with a faint light ring at its edge. The box reaches far enough up that the whole ring fits in it
-     (a gradient can't paint outside its box, so a smaller box cut the top of the ring off). */
+  /* a soft dark pool of shade behind the skin, so it stands clear of the moon and the busy picture */
   .stage-glow {
-    position: absolute; inset: -22% -14% 0; pointer-events: none;
-    background:
-      radial-gradient(ellipse 46% 44% at 50% 48%, rgba(12, 12, 14, .78), rgba(12, 12, 14, .55) 45%, rgba(12, 12, 14, .2) 75%, transparent),
-      radial-gradient(ellipse 50% 47.5% at 50% 48%, transparent 80%, rgba(243, 243, 243, .07) 92%, transparent);
+    position: absolute; inset: -6% -14% 0; pointer-events: none;
+    background: radial-gradient(ellipse 46% 50% at 50% 40%, rgba(12, 12, 14, .78), rgba(12, 12, 14, .55) 45%, rgba(12, 12, 14, .2) 75%, transparent);
     transform: translate(calc(var(--ry, 0) * -1.2px), calc(var(--rx, 0) * 1.2px));
     transition: transform .25s ease-out;
   }
