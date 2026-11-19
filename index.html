@@ -223,6 +223,47 @@
   @keyframes title-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
   .intro { max-width: 60ch; font-size: 1.08rem; color: var(--muted); }
   .intro strong { color: var(--text); font-weight: 600; }
+  /* small fact cards under the intro: age and timezone */
+  .facts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: -6px; }
+  .facts li {
+    display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px 7px 12px;
+    font-family: var(--font-pixel); font-size: 1rem; font-weight: 600; letter-spacing: .04em; color: var(--text);
+    background: var(--panel); border: 2px solid var(--edge-dark); border-radius: var(--radius-sm);
+    box-shadow: inset 2px 2px 0 var(--edge-light), inset -2px -2px 0 var(--edge-shade), 0 4px 0 rgba(0, 0, 0, .25);
+  }
+  .facts li::before {
+    content: ""; width: 8px; height: 8px; flex: none;
+    background: linear-gradient(135deg, #ffb08a, #e2563f); border-radius: 0 6px 0 6px; transform: rotate(-20deg);
+    box-shadow: 0 0 10px rgba(255, 140, 90, .7);
+  }
+  .fact-label { font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .fact-note { font-family: var(--font-body); font-size: .85rem; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+  .age-num { display: inline-block; min-width: 1.2em; }
+  .fact-time { padding-left: 10px; margin-left: 2px; border-left: 2px solid var(--line); color: var(--text); }
+  .tz-colon { animation: tz-blink 1s steps(1) infinite; }
+  /* the cards pop in one after the other, then float gently; the little leaf sways and glows */
+  .facts li {
+    opacity: 0; transform: translateY(12px) scale(.88);
+    animation: fact-in .75s cubic-bezier(.2, .9, .3, 1.35) .9s forwards, fact-float 5s ease-in-out 1.7s infinite;
+    transition: border-color .25s, box-shadow .25s, scale .25s cubic-bezier(.2, .8, .2, 1.4);
+  }
+  .facts li + li { animation-delay: 1.08s, 2.5s; }
+  .trailer-on .facts li, .trailer-on .tz-colon { animation-play-state: paused; }
+  .facts li::before { animation: leaf-sway 3.2s ease-in-out infinite; }
+  .facts li + li::before { animation-delay: -1.6s; }
+  .facts li:hover { scale: 1.06; border-color: var(--text); box-shadow: inset 2px 2px 0 var(--edge-light), inset -2px -2px 0 var(--edge-shade), 0 4px 0 rgba(0, 0, 0, .25), 0 0 26px rgba(255, 150, 100, .45); }
+  .facts li:hover::before { animation-duration: .9s; }
+  @keyframes fact-in { to { opacity: 1; transform: none; } }
+  @keyframes fact-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -3px; } }
+  @keyframes leaf-sway {
+    0%, 100% { transform: rotate(-20deg); box-shadow: 0 0 7px rgba(255, 140, 90, .5); }
+    50% { transform: rotate(16deg) translateY(-1px); box-shadow: 0 0 16px rgba(255, 175, 115, .95); }
+  }
+  @keyframes tz-blink { 50% { opacity: .2; } }
+  @media (prefers-reduced-motion: reduce) {
+    .facts li { opacity: 1; transform: none; animation: none; }
+    .facts li::before, .tz-colon { animation: none; }
+  }
   .hero-copy { container-type: inline-size; }
   /* One row of four: the type scales with the text column so the row always fits. */
   .shortcuts { display: flex; flex-wrap: nowrap; gap: .5em; margin-top: 22px; font-size: .85rem; font-size: clamp(.7rem, 2.65cqi, 1.05rem); }
@@ -590,7 +631,7 @@
   <button type="button" class="tr-gate" id="trailer-gate" hidden>
     <span class="tr-gate-inner">
       <span class="tr-gate-btn"><span data-icon="play" aria-hidden="true"></span>Click to start</span>
-      <span class="tr-gate-hint">Trailer with sound · 26 s</span>
+      <span class="tr-gate-hint">Trailer with sound · 30 s</span>
     </span>
   </button>
   <button type="button" class="tr-btn tr-sound" id="trailer-sound" aria-pressed="false">Sound off</button>
@@ -599,7 +640,7 @@
 <div class="tr-music" aria-hidden="true"><div id="trailer-music"></div></div>
 <div class="now-playing" id="now-playing" role="status" hidden>
   <span class="np-eq" aria-hidden="true"><i></i><i></i><i></i></span>
-  <span class="np-text">Cannonball <span>· Lithe ft. Don Toliver</span></span>
+  <span class="np-text">Blue Talisman <span>· SadiQ &amp; reezy</span></span>
   <button type="button" class="np-stop" id="np-stop">Stop</button>
 </div>
 <script>
@@ -657,13 +698,23 @@
   var PIX = '"Pixelify Sans", "Courier New", monospace';
   var BODY = '"Manrope", system-ui, sans-serif';
   var TAU = Math.PI * 2;
-  /* Scene start times in seconds. The music runs at 120 BPM, so a beat is 0.5 s. */
-  /* One second per server card: change SERVERS when a server is added to Staff Experience and
-     everything after the server scene (and the music) moves along with it. */
+  /* Scene start times in seconds, cut to the song: "Blue Talisman" runs at 76 BPM (a beat is 0.79 s,
+     a bar 3.16 s), the first downbeat is at 0.34 s and reezy's hook drops on beat 16 (0:12.97).
+     The name builds over the intro, the numbers slam in every two beats, the light comes on the skin
+     exactly on the drop, then one server card per beat, the skills on eighth notes and the title on
+     the downbeat of bar 9. SERVERS: change it when a server is added to Staff Experience and
+     everything after the server scene moves along with it. */
   var SERVERS = 7;
-  var T = { zoom: 3.5, stats: 4, reveal: 8.5, servers: 12.5 };
-  T.skills = T.servers + SERVERS; T.hush = T.skills + 2.5; T.title = T.hush + 0.5; T.dissolve = T.title + 3.2; T.end = T.title + 4;
-  var STAT_STEP = 1.5;
+  var BEAT = 60 / 76, DOWN = 0.34;
+  function beatAt(n) { return DOWN + n * BEAT; }
+  var DROP = beatAt(16), LIGHT = BEAT;               /* the light comes on LIGHT seconds into the reveal */
+  var SV = BEAT, SKS = BEAT / 2;                     /* one server card per beat, one skill per eighth note */
+  var T = { stats: beatAt(8), reveal: DROP - LIGHT, servers: DROP + 4 * BEAT };
+  T.zoom = T.stats - 0.5;
+  T.skills = T.servers + SERVERS * SV;
+  T.title = beatAt(Math.ceil((T.skills + 3 * BEAT - DOWN) / BEAT / 4) * 4);    /* the next bar after the skills */
+  T.hush = T.title - BEAT; T.dissolve = T.title + 4 * BEAT; T.end = T.title + 5 * BEAT;
+  var STAT_STEP = 2 * BEAT;
 
   function clamp(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
   function seg(t, a, b) { return clamp((t - a) / (b - a)); }
@@ -895,7 +946,7 @@
   function reveal(t) {
     fillAll(INK);
     var sx = portrait ? W * 0.5 : W * 0.7, sy = portrait ? H * 0.6 : H * 0.52;
-    var lit = seg(t, 0.9, 1.25);
+    var lit = seg(t, LIGHT, LIGHT + 0.22);                                      /* on the drop */
     glow(sx, sy, Math.max(W, H) * 0.5, 0.1 + 0.14 * lit);
     dust(t + 20, 40, 0.45);
     var sh = Math.min(H * (portrait ? 0.5 : 0.78), W * (portrait ? 1.1 : 0.62)) * (1 + 0.07 * t / 4);
@@ -947,7 +998,7 @@
   }
   function servers(t) {
     var list = pageData().servers, n = list.length || 4;
-    var i = Math.min(n - 1, Math.floor(t)), u = t - i;
+    var i = Math.min(n - 1, Math.floor(t / SV)), u = Math.min(1, (t - i * SV) / SV);
     var s = list[i] || { name: "", role: "", status: "", current: false, num: 0, img: null };
     var dir = i % 2 ? -1 : 1;
     var e = outExpo(seg(u, 0, 0.26)), x = inCubic(seg(u, 0.87, 1)), mv = (1 - e) + x;
@@ -1010,7 +1061,7 @@
   function skills(t) {
     var list = pageData().skills;
     if (!list.length) list = ["Professional", "Active", "Calm", "Friendly", "Mature"];
-    var i = Math.min(list.length - 1, Math.floor(t / 0.5)), u = (t - i * 0.5) / 0.5, inv = i % 2 === 0;
+    var i = Math.min(list.length - 1, Math.floor(t / SKS)), u = Math.min(1, (t - i * SKS) / SKS), inv = i % 2 === 0;
     fillAll(inv ? WHITE : INK);
     var word = list[i].toUpperCase();
     var size = fitSize(word, W * 0.88, H * 0.34, 700, PIX);
@@ -1066,8 +1117,8 @@
 
   /* ---- Things that sit over every scene: flashes on the cuts, vignette, grain, cinema bars ---- */
   var CUTS = [[T.stats, 1, 0.4], [T.stats + STAT_STEP, 0.3, 0.16], [T.stats + 2 * STAT_STEP, 0.3, 0.16], [T.reveal, 0.55, 0.25],
-    [T.reveal + 0.9, 0.18, 0.15], [T.servers, 0.6, 0.2], [T.title, 0.85, 0.4]];
-  for (var ci = 1; ci < SERVERS; ci++) CUTS.push([T.servers + ci, 0.25, 0.14]);   /* a small flash on every server card */
+    [T.reveal + LIGHT, 0.3, 0.2], [T.servers, 0.6, 0.2], [T.title, 0.85, 0.4]];
+  for (var ci = 1; ci < SERVERS; ci++) CUTS.push([T.servers + ci * SV, 0.25, 0.14]);   /* a small flash on every server card */
   function overlays(t) {
     var v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.hypot(W, H) * 0.62);
     v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.5)");
@@ -1084,7 +1135,7 @@
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
     ctx.fillStyle = "rgba(" + LIT + ",.3)"; ctx.fillRect(0, H - 3, W * t / T.end, 3);
     if (sp.on && bar > 8) {                           /* song credit in the top cinema bar */
-      var credit = "MUSIC: CANNONBALL - LITHE FT. DON TOLIVER";
+      var credit = "MUSIC: BLUE TALISMAN - SADIQ & REEZY";
       var cs = fitSize(credit, W * 0.86, Math.max(10, Math.min(14, H * 0.018)), 600, PIX);
       ctx.fillStyle = "rgba(" + LIT + ",.55)";
       spaced(credit, W / 2, bar / 2, cs * 0.2, "center");
@@ -1207,7 +1258,7 @@
       var shimmer = function (t, dur) { for (var s = 0; s < 5; s++) tone(t + s * dur / 5, { f: 1600 + s * 240, d: 0.35, peak: 0.02, send: true }); };
       for (i = 0; i < 13; i += 2) tock(lockAt(i), 1);                            /* blocks locking into place */
       boom(2.7, 0.45); shimmer(2.75, 0.4);                                       /* STAFF PORTFOLIO appears */
-      riser(3, 1, 2600); whoosh(3.6, 0.45);                                      /* the zoom through the letters */
+      riser(T.zoom - 1, 1, 2600); whoosh(T.zoom + 0.1, 0.45);                    /* the zoom through the letters */
       for (k = 0; k < 3; k++) {                                                  /* numbers slam in */
         b = T.stats + k * STAT_STEP;
         boom(b, k === 2 ? 0.8 : 0.6);
@@ -1215,11 +1266,11 @@
       }
       riser(T.reveal - 1, 1);
       boom(T.reveal, 0.7);                                                       /* the silhouette */
-      thud(T.reveal + 0.9, 0.8); shimmer(T.reveal + 0.95, 0.5);                  /* the light comes on */
+      thud(T.reveal + LIGHT, 0.8); shimmer(T.reveal + LIGHT + 0.05, 0.5);       /* the light comes on, on the drop */
       riser(T.servers - 0.8, 0.8, 3000);
-      for (k = 0; k < T.skills - T.servers; k++) { b = T.servers + k; whoosh(b - 0.02, 0.2); thud(b + 0.08, 0.6); }   /* server cards */
-      for (k = 0; k < 5; k++) thud(T.skills + k * 0.5, 0.7);                     /* one hit per skill */
-      riser(T.skills + 1.5, 1);
+      for (k = 0; k < SERVERS; k++) { b = T.servers + k * SV; whoosh(b - 0.02, 0.2); thud(b + 0.04, 0.6); }   /* server cards */
+      for (k = 0; k < 6; k++) thud(T.skills + k * SKS, 0.7);                     /* one hit per skill */
+      riser(T.hush - 1, 1);
       tone(T.hush, { f: 300, f2: 40, glide: 0.4, d: 0.45, peak: 0.08 });        /* screen switching off */
       boom(T.title, 1.1); shimmer(T.title + 0.1, 0.8);                           /* the title hits */
       whoosh(T.dissolve - 0.1, 0.8);
@@ -1231,11 +1282,11 @@
       C4 = 261.63, Db4 = 277.18, Eb4 = 311.13, F4 = 349.23, G4 = 392, Ab4 = 415.3, C5 = 523.25, Eb5 = 622.25, F5 = 698.46;
 
     /* Splash: a low, uneasy drone; every letter that locks in lands with a dull clack. */
-    pad(0.05, 3.95, [F1, F2, Gb2, C3], 1.5, 260);
-    tone(0.1, { f: 38, d: 3.6, a: 1.4, peak: 0.3 });
+    pad(0.05, T.stats - 0.1, [F1, F2, Gb2, C3], 1.5, 260);
+    tone(0.1, { f: 38, d: T.stats - 0.4, a: 1.4, peak: 0.3 });
     for (i = 0; i < 13; i++) clack(lockAt(i), 150 + i * 9);
     boom(2.7, 0.5);
-    riser(3, 1, 2600);
+    riser(T.zoom - 1, 1, 2600);
     /* Numbers */
     [[0, [F2, F3, Ab3, C4]], [1, [Db3, F3, Ab3, Db4]], [2, [Eb3, G3, Bb3, Eb4]]].forEach(function (s) {
       var st = T.stats + s[0] * STAT_STEP;
@@ -1245,33 +1296,33 @@
     riser(T.reveal - 1, 1);
     /* Reveal */
     boom(T.reveal, 1);
-    pad(T.reveal, 2, [F2, F3, C4, Ab4], 1, 1000); pad(T.reveal + 2, 2, [Db3, Ab3, Db4, F4], 1, 1200);
+    pad(T.reveal, LIGHT + 2 * BEAT, [F2, F3, C4, Ab4], 1, 1000); pad(T.reveal + LIGHT + 2 * BEAT, T.servers - T.reveal - LIGHT - 2 * BEAT, [Db3, Ab3, Db4, F4], 1, 1200);
     var motif = [F4, Ab4, C5, Ab4, Eb5, C5, Ab4, C5];
-    for (i = 0; i < 12; i++) pluck(T.reveal + 1 + i * 0.25, motif[i % 8], 0.8);
-    for (i = 0; i < 8; i++) hat(T.reveal + 2 + i * 0.25, 0.7);
+    for (i = 0; i < 8; i++) pluck(T.reveal + LIGHT + i * BEAT / 2, motif[i % 8], 0.8);
+    for (i = 0; i < 8; i++) hat(T.reveal + LIGHT + 2 * BEAT + i * BEAT / 4, 0.7);
     riser(T.servers - 1, 1);
     /* Servers: the beat drops */
     /* Two-second bars (the last one shorter if needed), one card per second, chords alternating. */
     var bars = [];
     for (var bs = 0; bs < SERVERS; bs += 2) bars.push((bs / 2) % 2
-      ? [T.servers + bs, Db3 / 2, [Db3, F3, Ab3, Db4], Math.min(2, SERVERS - bs)]
-      : [T.servers + bs, F2, [F2, F3, Ab3, C4], Math.min(2, SERVERS - bs)]);
+      ? [T.servers + bs * SV, Db3 / 2, [Db3, F3, Ab3, Db4], Math.min(2, SERVERS - bs)]
+      : [T.servers + bs * SV, F2, [F2, F3, Ab3, C4], Math.min(2, SERVERS - bs)]);
     bars.forEach(function (bar) {
       b = bar[0]; var len = bar[3];
-      [0, 0.75, 1, 1.75].forEach(function (x) { if (x < len) { kick(b + x); sub(b + x, bar[1], 0.4); } });
-      clap(b + 0.5); if (len > 1) clap(b + 1.5);
-      for (i = 0; i < 8 * len; i++) hat(b + i * 0.125, i % 2 ? 0.55 : 1);
-      for (i = 0; i < 4; i++) hat(b + len - 0.25 + i * 0.0625, 0.8);
-      for (i = 0; i < 4 * len; i++) pluck(b + i * 0.25, motif[i] * 2, 0.55);
-      pad(b, len, bar[2], 0.8, 1400);
-      boom(b, 0.5); if (len > 1) boom(b + 1, 0.4); whoosh(b + 0.88, 0.14); if (len > 1) whoosh(b + 1.88, 0.14);
+      [0, 0.75, 1, 1.75].forEach(function (x) { if (x < len) { kick(b + x * SV); sub(b + x * SV, bar[1], 0.4); } });
+      clap(b + 0.5 * SV); if (len > 1) clap(b + 1.5 * SV);
+      for (i = 0; i < 8 * len; i++) hat(b + i * 0.125 * SV, i % 2 ? 0.55 : 1);
+      for (i = 0; i < 4; i++) hat(b + (len - 0.25 + i * 0.0625) * SV, 0.8);
+      for (i = 0; i < 4 * len; i++) pluck(b + i * 0.25 * SV, motif[i] * 2, 0.55);
+      pad(b, len * SV, bar[2], 0.8, 1400);
+      boom(b, 0.5); if (len > 1) boom(b + SV, 0.4); whoosh(b + 0.88 * SV, 0.14); if (len > 1) whoosh(b + 1.88 * SV, 0.14);
     });
     /* Skills: a hit on every word, then a roll into silence */
-    pad(T.skills, 2.5, [Eb3, G3, Bb3, Eb4], 0.8, 1600);
-    for (i = 0; i < 5; i++) { kick(T.skills + i * 0.5); sub(T.skills + i * 0.5, Eb3 / 2, 0.35); clap(T.skills + i * 0.5 + 0.25); }
-    for (i = 0; i < 20; i++) hat(T.skills + i * 0.125, i % 2 ? 0.5 : 0.9);
-    [0, 0.25, 0.375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375].forEach(function (x) { clap(T.skills + 1.5 + x); });
-    riser(T.skills + 1.5, 1);
+    pad(T.skills, T.hush - T.skills, [Eb3, G3, Bb3, Eb4], 0.8, 1600);
+    for (i = 0; i < 6; i++) { kick(T.skills + i * SKS); sub(T.skills + i * SKS, Eb3 / 2, 0.35); clap(T.skills + i * SKS + SKS / 2); }
+    for (i = 0; i < 24; i++) hat(T.skills + i * SKS / 4, i % 2 ? 0.5 : 0.9);
+    [0, 0.25, 0.375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375].forEach(function (x) { clap(T.hush - 1 + x); });
+    riser(T.hush - 1, 1);
     /* Title */
     boom(T.title, 1.2);
     pad(T.title, 3.6, [F2, C3, F3, Ab3, C4, G4], 1.2, 1500);
@@ -1286,11 +1337,13 @@
     soundBtn.classList.toggle("needs-click", !on && !wait && !sp.userMuted);
   }
 
-  /* ---- Music: "Cannonball" (Lithe feat. Don Toliver), played through Spotify's own embedded player,
-     so the song is streamed the licensed way and never copied into the page. Sound needs a click or a
-     key press first. Visitors who are not logged in to Spotify only get Spotify's short preview clip:
-     when that ends before the film does, or Spotify cannot load at all, the original score takes over. ---- */
-  var SONG = "spotify:track:57yu1WujridphAAkPgpkhC";
+  /* ---- Music: "Blue Talisman" (SadiQ & reezy), reezy's part: the song opens with his intro, hook and
+     post-hook (0:00 to about 0:50), then SadiQ's part starts, so the song stops at SONG_END. Played
+     through Spotify's own embedded player, so it is streamed the licensed way and never copied into the
+     page. Sound needs a click first. Visitors who are not logged in to Spotify only get Spotify's short
+     preview clip: when that ends before the film does, or Spotify cannot load at all, the original
+     score takes over. ---- */
+  var SONG = "spotify:track:1JT6JFTCc15gtFLI4ClcxZ", SONG_END = 50;
   var sp = { state: "idle", ctrl: null, want: false, on: false, keep: false, auto: false, fresh: true, ever: false, gaveUp: false, userMuted: false, watch: 0, kick: 0 };
   function spFail() {
     if (sp.state === "ready") return;
@@ -1354,8 +1407,13 @@
     if (!d) return;
     var on = !d.isPaused;
     if (on && (!sp.want || (!playing && !sp.keep))) { try { sp.ctrl.pause(); } catch (err) { /* ignore */ } on = false; }
-    var ended = d.duration > 0 && d.position >= d.duration - 400;
-    if (on && !ended) { sp.ever = true; sp.auto = false; clearTimeout(sp.watch); if (!au && playing) scoreOn(true); }   /* the song is on: add the effects */
+    var ended = d.duration > 0 && (d.position >= d.duration - 400 || d.position >= SONG_END * 1000);   /* reezy's part is over */
+    if (ended && on) { try { sp.ctrl.pause(); } catch (err) { /* ignore */ } }
+    if (on && !ended && playing && typeof d.position === "number" && t0) {      /* keep the film on the song's beat */
+      var songT = d.position / 1000;
+      if (songT < T.end && Math.abs(songT - clock()) > 0.15) t0 = performance.now() - songT * 1000;
+    }
+    if (on && !ended) { sp.ever = true; sp.started = true; sp.auto = false; clearTimeout(sp.watch); if (!au && playing) scoreOn(true); }   /* the song is on: add the effects */
     sp.on = on && !ended;
     if (ended && sp.want && playing) { sp.want = false; scoreOff(); scoreOn(); }   /* the clip ran out: the score finishes the film */
     if (sp.keep && !sp.on) { sp.keep = false; sp.want = false; nowPlaying(false); }  /* the song ended after the trailer */
@@ -1398,7 +1456,7 @@
   function clock() { return playing && t0 ? (performance.now() - t0) / 1000 : 0; }
   function frame(now) {
     if (!playing) return;
-    if (!t0) t0 = now;
+    if (!t0 || (sp.want && !sp.started)) t0 = now;      /* the film waits on its first frame until the song really starts */
     var t = (now - t0) / 1000;
     if (t >= T.end) { finish(false); return; }
     render(t);
@@ -1424,7 +1482,7 @@
     root.classList.add("trailer-on"); box.classList.remove("is-leaving"); box.style.opacity = "";
     resize();
     playing = true; t0 = 0;
-    sp.gaveUp = false;
+    sp.gaveUp = false; sp.started = false;
     if (sp.keep) {                                     /* the song is still on from last time: start it over */
       sp.keep = false; nowPlaying(false); sp.fresh = false;
       try { if (sp.ctrl.restart) sp.ctrl.restart(); else sp.ctrl.seek(0); } catch (err) { /* ignore */ }
@@ -1444,12 +1502,11 @@
      If the browser already allows sound (the visitor clicked before, or the site is trusted), the
      film starts straight away. Spotify loads while the title screen is up, so the song is ready. */
   var gateEl = document.getElementById("trailer-gate"), gating = false, graf = 0;
+  /* Only skip the title screen when the visitor has already clicked on this page. A browser may allow
+     sound on its own (it trusts the site), but Spotify's embedded player still needs a real click, so
+     without one the song would stay silent. */
   function canAutoplay() {
-    if (navigator.userActivation && navigator.userActivation.hasBeenActive) return true;
-    try { if (navigator.getAutoplayPolicy) return navigator.getAutoplayPolicy("mediaelement") === "allowed"; } catch (err) { /* not supported */ }
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return false;
-    try { var probe = new AC(), ok = probe.state === "running"; probe.close(); return ok; } catch (err) { return false; }
+    return !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
   }
   function drawGate(t) {
     tone();
@@ -2176,7 +2233,48 @@
         <div class="hero-copy">
           <p class="eyebrow">Minecraft Staff Portfolio</p>
           <h1 class="title" id="title" aria-label="Nachsichtiger">Nachsichtiger</h1>
-          <p class="intro">Hey, I'm <strong>Nachsichtiger</strong>, also known as <strong>Marco</strong>. I love playing Minecraft and have been part of staff teams for around 8 months now. In that time I have gained a lot of experience and skills that I am really proud of. Away from Minecraft I love playing football and spending time in nature.</p>
+          <p class="intro">Hey, I'm <strong>Nachsichtiger</strong>, also known as <strong>Marco</strong>. I'm <strong>16 years old</strong>, based in <strong>Central European Time</strong>, and I love playing Minecraft. I have been part of staff teams for around 8 months now, and in that time I have gained a lot of experience and skills that I am really proud of. Away from Minecraft I love playing football and spending time in nature.</p>
+          <ul class="facts" aria-label="About me">
+            <li class="fact-age"><span class="fact-label">Age</span><span class="age-num">16</span></li>
+            <li class="fact-tz"><span class="fact-label">Timezone</span><span class="tz-name">CET</span> <span class="fact-note">(<span class="tz-off">UTC+1</span>)</span><span class="fact-time" hidden></span></li>
+          </ul>
+          <script>
+          /* Fact cards: the age counts up to 16 when the card pops in, and the timezone card shows the
+             time in Central European Time right now (CET in winter, CEST in summer) with a blinking colon. */
+          (function () {
+            var age = document.querySelector(".fact-age"), num = age && age.querySelector(".age-num");
+            var tz = document.querySelector(".fact-tz");
+            var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (age && num && !calm) {
+              num.textContent = "0";
+              age.addEventListener("animationstart", function (e) {
+                if (e.animationName !== "fact-in" || e.target !== age) return;
+                var t0 = performance.now();
+                (function step(now) {
+                  var u = Math.min(1, (now - t0) / 900);
+                  num.textContent = String(Math.round(16 * (1 - Math.pow(1 - u, 3))));
+                  if (u < 1) requestAnimationFrame(step);
+                })(t0);
+              });
+            }
+            if (!tz || !window.Intl || !Intl.DateTimeFormat) return;
+            var timeEl = tz.querySelector(".fact-time"), nameEl = tz.querySelector(".tz-name"), offEl = tz.querySelector(".tz-off");
+            function tick() {
+              try {
+                var now = new Date();
+                var name = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", timeZoneName: "short" }).formatToParts(now)
+                  .filter(function (p) { return p.type === "timeZoneName"; })[0];
+                var summer = name && /CEST|GMT\+2/.test(name.value);
+                nameEl.textContent = summer ? "CEST" : "CET"; offEl.textContent = summer ? "UTC+2" : "UTC+1";
+                var hm = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hour12: false }).format(now).split(":");
+                timeEl.innerHTML = hm[0] + '<span class="tz-colon">:</span>' + hm[1];
+                timeEl.hidden = false;
+              } catch (err) { /* keep the plain text */ }
+            }
+            tick();
+            setInterval(tick, 15000);
+          })();
+          </script>
           <nav class="shortcuts" aria-label="Shortcuts">
             <a class="shortcut" href="#top"><span data-icon="face" aria-hidden="true"></span>Introduction</a>
             <a class="shortcut" href="#experience"><span data-icon="shield" aria-hidden="true"></span>Staff Experience</a>
